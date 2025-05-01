@@ -4,9 +4,12 @@ const httpStatusText = require("../utils/utils");
 module.exports = (...roles) => {
   return (req, res, next) => {
     const currentUserRole = req?.current?.role;
-     if (!roles.includes(currentUserRole)) {
+    if (!roles.includes(currentUserRole)) {
       const error = appError.create(
-        "you aren't allowed to this",
+        {
+          ar: "لا يمكنك الوصول لهذه الصفحة",
+          en: "You can't access this page",
+        },
         400,
         httpStatusText.FAIL
       );

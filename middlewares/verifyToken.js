@@ -7,9 +7,9 @@ const verifyToken = (req, res, next) => {
 
   // const token = authHeaders.split(" ")[1];
   const token = req?.body?.activationToken || req?.headers?.token;
-   if (!token) {
+  if (!token) {
     const error = appError.create(
-      "Please , login to continue",
+      { ar: "الرجاء تسجيل الدخول للمتابعة", en: "Please , login to continue" },
       401,
       httpStatusText.FAIL
     );
@@ -18,6 +18,7 @@ const verifyToken = (req, res, next) => {
 
   try {
     const current = jwt.verify(token, process.env.jwt_secret_key);
+
     current.token = token;
     req.current = current;
     next();

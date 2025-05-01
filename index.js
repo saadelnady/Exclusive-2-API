@@ -6,6 +6,7 @@ const cors = require("cors");
 const path = require("path");
 
 // Routers
+const adminRouter = require("./routes/admin.route");
 const userRouter = require("./routes/user.route");
 const productRouter = require("./routes/product.route");
 const sellerRouter = require("./routes/seller.route");
@@ -15,7 +16,7 @@ const couponCodeRouter = require("./routes/couponCode.route");
 const cartRouter = require("./routes/cart.route");
 const wishListRouter = require("./routes/wishListRouter.route.js");
 
-// const uploadRouter = require("./utils/upload");
+const uploadRouter = require("./utils/upload");
 const express = require("express");
 const cookieParser = require("cookie-parser");
 const bodyParser = require("body-parser");
@@ -31,8 +32,9 @@ app.use(bodyParser.urlencoded({ extended: true, limit: "50mb" }));
 
 // to preview image
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-// app.use("/api/upload", uploadRouter);
+app.use("/api/upload", uploadRouter);
 
+app.use("/api/admin", adminRouter);
 app.use("/api/users", userRouter);
 app.use("/api/products", productRouter);
 app.use("/api/sellers", sellerRouter);
