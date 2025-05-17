@@ -26,7 +26,7 @@ const getAllAdmins = asyncWrapper(async (req, res, next) => {
 
   return res
     .status(200)
-    .json({ status: httpStatusText.SUCCESS, data: { Admins } });
+    .json({ status: httpStatusText.SUCCESS, data: { admins: Admins } });
 });
 
 const editAdminProfile = asyncWrapper(async (req, res, next) => {
