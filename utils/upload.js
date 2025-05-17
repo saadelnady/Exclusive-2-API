@@ -4,58 +4,73 @@ const fs = require("fs");
 const path = require("path");
 const router = express.Router();
 
-// تحديد مكان تخزين الملفات المرفوعة
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     const uploadDir = path.join(__dirname, "../uploads");
-
-    // التأكد من أن المجلد موجود وإذا لم يكن يتم إنشاؤه
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
-
-    cb(null, uploadDir); // تحديد المجلد الذي سيتم تخزين الملفات فيه
+    cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
-    // توليد اسم فريد للملف بناءً على الوقت والرقم العشوائي
-    const uniqueSuffix = Date.now() + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname); // استخراج الامتداد
-    cb(null, file.fieldname + "-" + uniqueSuffix + ext); // تحديد اسم الملف
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname);
+    cb(null, file.fieldname + "-" + uniqueSuffix + ext);
   },
 });
 
-// إعداد multer للتعامل مع الملفات المرفوعة
-const upload = multer({ storage: storage }).single("image"); // رفع صورة واحدة
+// أنواع الملفات المسموحة
+const allowedExtensions = [
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".gif",
+  ".mp4",
+  ".avi",
+  ".mov",
+  ".pdf",
+  ".docx",
+  ".zip",
+  ".rar",
+  ".txt",
+  ".doc",
+  ".csv",
+  ".xlsx",
+  ".xls",
+  ".pptx",
+  ".ppt",
+  ".odt",
+  ".ods",
+  ".odp",
+];
 
-// API لرفع الصورة
-router.post("/", upload, (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: "No file uploaded." });
+const fileFilter = (req, file, cb) => {
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (allowedExtensions.includes(ext)) {
+    cb(null, true);
+  } else {
+    cb(new Error("File type not allowed."), false);
+  }
+};
+
+const upload = multer({ storage, fileFilter });
+
+// يمكن رفع عدة ملفات عبر المفتاح "files"
+router.post("/", upload.array("files", 10), (req, res) => {
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).json({ error: "No files uploaded." });
   }
 
-  // التحقق من نوع الصورة
-  if (
-    ![".jpg", ".jpeg", ".png", ".gif"].includes(
-      path.extname(req.file.originalname).toLowerCase()
-    )
-  ) {
-    return res.status(400).json({ error: "Only image files are allowed!" });
-  }
+  const uploadedFiles = req.files.map((file) => ({
+    filename: file.filename,
+    path: file.path,
+    size: file.size,
+    url: `${req.protocol}://${req.get("host")}/uploads/${file.filename}`,
+  }));
 
-  // بناء الرابط بناءً على مكان تخزين الصور
-  const imageUrl = `${req.protocol}://${req.get("host")}/uploads/${
-    req.file.filename
-  }`;
-
-  // إرجاع الـ response مع رابط الصورة ومعلوماتها
-  return res.status(200).json({
-    message: "File uploaded successfully",
-    file: {
-      filename: req.file.filename,
-      path: req.file.path,
-      size: req.file.size,
-      url: imageUrl, // رابط الصورة المرفوعة
-    },
+  res.status(200).json({
+    message: "Files uploaded successfully",
+    files: uploadedFiles,
   });
 });
 
