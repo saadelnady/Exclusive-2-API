@@ -7,6 +7,7 @@ const {
   editAdminProfile,
   deleteAdmin,
   blockAdmin,
+  getStatistics,
 } = require("../controller/admin.controller");
 
 const {
@@ -37,5 +38,8 @@ router
 router.route("/getProfile").get(verifyToken, getAdminProfile);
 router.route("/register").post(registerValidation(), adminRegister);
 router.route("/login").post(loginValidation(), adminLogin);
+router
+  .route("/statistics")
+  .get(verifyToken, alloewdTo(roles.ADMIN, roles.SUPER_ADMIN), getStatistics);
 
 module.exports = router;

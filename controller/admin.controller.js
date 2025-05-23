@@ -1,11 +1,21 @@
 const { validationResult } = require("express-validator");
 const bcrypt = require("bcrypt");
-const Admin = require("../models/admin.model");
 const asyncWrapper = require("../middlewares/asyncWrapper");
+
+const Admin = require("../models/admin.model");
+const User = require("../models/user.model");
+const Seller = require("../models/seller.model");
+const Product = require("../models/product.model");
+const Order = require("../models/order.model");
+
+const moment = require("moment");
+require("moment/locale/ar");
+
 const appError = require("../utils/appError");
 const httpStatusText = require("../utils/utils");
 const generateToken = require("../utils/generateToken");
 const roles = require("../utils/roles");
+
 const getAllAdmins = asyncWrapper(async (req, res, next) => {
   const { limit, page } = req.query;
   const skip = (page - 1) * limit;
@@ -325,6 +335,76 @@ const blockAdmin = asyncWrapper(async (req, res, next) => {
   });
 });
 
+const getStatistics = asyncWrapper(async (req, res, next) => {
+  const [admins, users, sellers, products, orders] = await Promise.all([
+    Admin.find({}, { __v: false, password: false, token: false }),
+    User.find({}, { __v: false, password: false, token: false }),
+    Seller.find({}, { __v: false }),
+    Product.find({}, { __v: false }),
+    Order.find({}, { __v: false }),
+  ]);
+
+  const now = moment();
+  const salesData = [];
+
+  for (let i = 5; i >= 0; i--) {
+    const start = moment(now).subtract(i, "months").startOf("month").toDate();
+    const end = moment(now).subtract(i, "months").endOf("month").toDate();
+
+    const totalSales = await Order.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: start, $lte: end },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$totalPrice" },
+        },
+      },
+    ]);
+
+    const monthEn = moment(start).locale("en").format("MMMM");
+    const monthAr = moment(start).locale("ar").format("MMMM");
+
+    salesData.push({
+      name: { ar: monthAr, en: monthEn },
+      sales: totalSales[0]?.total || 0,
+    });
+  }
+
+  const statistics = {
+    statisticsData: [
+      {
+        title: { ar: "المشرفين", en: "Admins" },
+        total: admins.length,
+      },
+      {
+        title: { ar: "المستخدمين", en: "Users" },
+        total: users.length,
+      },
+      {
+        title: { ar: "البائعين", en: "Sellers" },
+        total: sellers.length,
+      },
+      {
+        title: { ar: "المنتجات", en: "Products" },
+        total: products.length,
+      },
+      {
+        title: { ar: "الطلبات", en: "Orders" },
+        total: orders.length,
+      },
+    ],
+    salesData,
+  };
+
+  return res.status(200).json({
+    status: httpStatusText.SUCCESS,
+    data: { statistics },
+  });
+});
 module.exports = {
   getAllAdmins,
   getAdminProfile,
@@ -333,4 +413,5 @@ module.exports = {
   editAdminProfile,
   deleteAdmin,
   blockAdmin,
+  getStatistics,
 };

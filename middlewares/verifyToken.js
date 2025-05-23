@@ -3,10 +3,12 @@ const httpStatusText = require("../utils/utils");
 const jwt = require("jsonwebtoken");
 
 const verifyToken = (req, res, next) => {
-  // const authHeaders = req.headers.authorization || req.headers.Authorization;
+  const authHeaders = req.headers.authorization || req.headers.Authorization;
 
-  // const token = authHeaders.split(" ")[1];
-  const token = req?.body?.activationToken || req?.headers?.token;
+  const token =
+    req?.body?.activationToken ||
+    req?.headers?.token ||
+    authHeaders?.split(" ")[1];
   if (!token) {
     const error = appError.create(
       { ar: "الرجاء تسجيل الدخول للمتابعة", en: "Please , login to continue" },
