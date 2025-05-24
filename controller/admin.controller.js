@@ -133,8 +133,30 @@ const editAdminProfile = asyncWrapper(async (req, res, next) => {
 
 const getAdminProfile = asyncWrapper(async (req, res, next) => {
   const token = req?.current?.token;
+
   // exclude password and token from the response
   const targetAdmin = await Admin.findOne({ token }).select("-password -token");
+
+  if (!targetAdmin) {
+    const error = appError.create(
+      { ar: "هذا الحساب  غير موجود", en: "This account does not exist" },
+      404,
+      httpStatusText.FAIL
+    );
+    return next(error);
+  }
+
+  return res
+    .status(200)
+    .json({ status: httpStatusText.SUCCESS, data: { admin: targetAdmin } });
+});
+const getAdmin = asyncWrapper(async (req, res, next) => {
+  const { adminId } = req.params;
+
+  // exclude password and token from the response
+  const targetAdmin = await Admin.findOne({ _id: adminId }).select(
+    "-password -token"
+  );
 
   if (!targetAdmin) {
     const error = appError.create(
@@ -196,6 +218,59 @@ const adminRegister = asyncWrapper(async (req, res, next) => {
   return res.status(201).json({
     status: httpStatusText.SUCCESS,
     data: { token },
+    message: {
+      ar: "تم انشاء الحساب بنجاح",
+      en: "Account created successfully",
+    },
+  });
+});
+
+const addAdmin = asyncWrapper(async (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  const { firstName, lastName, email, password, mobilePhone } = req.body;
+
+  const oldAdmin = await Admin.findOne({ email: email });
+
+  const mobilePhoneExist = await Admin.findOne({ mobilePhone: mobilePhone });
+
+  if (oldAdmin) {
+    const error = appError.create(
+      { ar: "الادمن موجود بالفعل", en: "Admin already exists" },
+      400,
+      httpStatusText.FAIL
+    );
+    return next(error);
+  }
+  if (mobilePhoneExist) {
+    const error = appError.create(
+      { ar: "رقم الهاتف موجود بالفعل", en: "Mobile Phone is Already Exist" },
+      400,
+      httpStatusText.FAIL
+    );
+    return next(error);
+  }
+  //genereate token
+  const admin = {
+    firstName,
+    lastName,
+    email,
+    mobilePhone,
+    password,
+  };
+  const token = generateToken(admin);
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+  admin.password = hashedPassword;
+  admin.token = token;
+  const newAdmin = await Admin.create(admin);
+
+  return res.status(201).json({
+    status: httpStatusText.SUCCESS,
+    admin: newAdmin,
     message: {
       ar: "تم انشاء الحساب بنجاح",
       en: "Account created successfully",
@@ -285,10 +360,11 @@ const deleteAdmin = asyncWrapper(async (req, res, next) => {
     return next(error);
   }
 
-  const deletedAdmin = await Admin.deleteOne({ _id: req.params.adminId });
+  await Admin.deleteOne({ _id: req.params.adminId });
   res.status(201).json({
     status: httpStatusText.SUCCESS,
-    data: { deletedAdmin },
+    admin: targetAdmin,
+    message: { ar: "تم حذف الحساب بنجاح", en: "Account deleted successfully" },
   });
 });
 
@@ -337,7 +413,10 @@ const blockAdmin = asyncWrapper(async (req, res, next) => {
 
 const getStatistics = asyncWrapper(async (req, res, next) => {
   const [admins, users, sellers, products, orders] = await Promise.all([
-    Admin.find({}, { __v: false, password: false, token: false }),
+    Admin.find(
+      { role: { $ne: roles.SUPER_ADMIN } }, // filter (query)
+      { __v: 0, password: 0, token: 0 } // projection
+    ),
     User.find({}, { __v: false, password: false, token: false }),
     Seller.find({}, { __v: false }),
     Product.find({}, { __v: false }),
@@ -397,7 +476,13 @@ const getStatistics = asyncWrapper(async (req, res, next) => {
         total: orders.length,
       },
     ],
-    salesData,
+    salesData: {
+      title: {
+        ar: "مبيعات ال 6 أشهر الأخيرة",
+        en: " Sales of the last 6 months",
+      },
+      data: salesData,
+    },
   };
 
   return res.status(200).json({
@@ -414,4 +499,6 @@ module.exports = {
   deleteAdmin,
   blockAdmin,
   getStatistics,
+  addAdmin,
+  getAdmin,
 };

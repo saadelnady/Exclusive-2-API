@@ -8,6 +8,8 @@ const {
   deleteAdmin,
   blockAdmin,
   getStatistics,
+  addAdmin,
+  getAdmin,
 } = require("../controller/admin.controller");
 
 const {
@@ -27,15 +29,25 @@ router
   .route("/all-admins")
   .get(verifyToken, alloewdTo(roles.SUPER_ADMIN), getAllAdmins);
 router
+  .route("/all-admins")
+  .post(
+    verifyToken,
+    alloewdTo(roles.SUPER_ADMIN),
+    registerValidation(),
+    addAdmin
+  );
+router
   .route("/blockAdmin/:adminId")
   .put(verifyToken, alloewdTo(roles.SUPER_ADMIN), blockAdmin);
 
 router
   .route("/:adminId")
+  .put(verifyToken, alloewdTo(roles.SUPER_ADMIN), getAdmin)
   .put(editProfileValidation(), editAdminProfile)
   .delete(verifyToken, alloewdTo(roles.SUPER_ADMIN), deleteAdmin);
 
 router.route("/getProfile").get(verifyToken, getAdminProfile);
+
 router.route("/register").post(registerValidation(), adminRegister);
 router.route("/login").post(loginValidation(), adminLogin);
 router

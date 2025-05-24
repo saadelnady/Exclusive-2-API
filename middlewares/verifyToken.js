@@ -20,7 +20,6 @@ const verifyToken = (req, res, next) => {
 
   try {
     const current = jwt.verify(token, process.env.jwt_secret_key);
-
     current.token = token;
     req.current = current;
     next();
