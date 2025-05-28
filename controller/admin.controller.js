@@ -231,7 +231,7 @@ const addAdmin = asyncWrapper(async (req, res, next) => {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { firstName, lastName, email, password, mobilePhone } = req.body;
+  const { firstName, lastName, email, password, mobilePhone, image } = req.body;
 
   const oldAdmin = await Admin.findOne({ email: email });
 
@@ -260,11 +260,12 @@ const addAdmin = asyncWrapper(async (req, res, next) => {
     email,
     mobilePhone,
     password,
+    image,
   };
-  const token = generateToken(admin);
 
   const hashedPassword = await bcrypt.hash(password, 10);
   admin.password = hashedPassword;
+  const token = generateToken(admin);
   admin.token = token;
   const newAdmin = await Admin.create(admin);
 

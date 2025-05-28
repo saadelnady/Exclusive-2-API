@@ -60,12 +60,14 @@ router.post("/", upload.array("files", 10), (req, res) => {
   if (!req.files || req.files.length === 0) {
     return res.status(400).json({ error: "No files uploaded." });
   }
+  const BASE_URL =
+    process.env.BASE_URL || `${req.protocol}://${req.get("host")}`;
 
   const uploadedFiles = req.files.map((file) => ({
     filename: file.filename,
     path: file.path,
     size: file.size,
-    url: `${req.protocol}://${req.get("host")}/uploads/${file.filename}`,
+    url: `${BASE_URL}/uploads/${file.filename}`,
   }));
 
   res.status(200).json({
