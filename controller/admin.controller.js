@@ -15,28 +15,68 @@ const appError = require("../utils/appError");
 const httpStatusText = require("../utils/utils");
 const generateToken = require("../utils/generateToken");
 const roles = require("../utils/roles");
+const { default: mongoose } = require("mongoose");
 
 const getAllAdmins = asyncWrapper(async (req, res, next) => {
-  const { limit, page } = req.query;
+  const limit = parseInt(req.query.limit) || 10;
+  const page = parseInt(req.query.page) || 1;
+  const text = req.query.text;
   const skip = (page - 1) * limit;
-  const Admins = await Admin.find(
-    { role: { $ne: roles.SUPER_ADMIN } },
-    { __v: false, password: false, token: false }
-  )
-    .limit(limit)
-    .skip(skip);
-  if (!Admins) {
+
+  const searchQuery = {
+    role: { $ne: roles.SUPER_ADMIN },
+  };
+
+  // Escape special characters in regex
+  const escapeRegex = (text) => {
+    return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+  };
+
+  if (text) {
+    const safeText = escapeRegex(text);
+    const regex = { $regex: safeText, $options: "i" };
+
+    searchQuery.$or = [
+      { firstName: regex },
+      { lastName: regex },
+      { email: regex },
+      { mobilePhone: regex },
+      { address: regex },
+      { role: regex },
+      {
+        _id: mongoose.Types.ObjectId.isValid(text)
+          ? new mongoose.Types.ObjectId(text)
+          : undefined,
+      },
+    ].filter(Boolean);
+  }
+
+  const [Admins, totalAdminsCount] = await Promise.all([
+    Admin.find(searchQuery, { __v: 0, password: 0, token: 0 })
+      .limit(limit)
+      .skip(skip),
+    Admin.countDocuments(searchQuery),
+  ]);
+
+  if (!Admins.length) {
     const error = appError.create(
       { ar: "لا يوجد مشرفين", en: "There are no admins" },
       404,
       httpStatusText.FAIL
     );
-    next(error);
+    return next(error);
   }
 
-  return res
-    .status(200)
-    .json({ status: httpStatusText.SUCCESS, data: { admins: Admins } });
+  return res.status(200).json({
+    status: httpStatusText.SUCCESS,
+    data: {
+      admins: Admins,
+      total: totalAdminsCount,
+      currentPage: page,
+      pageSize: limit,
+      totalPages: Math.ceil(totalAdminsCount / limit),
+    },
+  });
 });
 
 const editAdminProfile = asyncWrapper(async (req, res, next) => {
@@ -352,19 +392,40 @@ const deleteAdmin = asyncWrapper(async (req, res, next) => {
     );
     return next(error);
   }
-  if (targetAdmin && targetAdmin.role === roles.SUPER_ADMIN) {
+
+  if (targetAdmin.role === roles.SUPER_ADMIN) {
     const error = appError.create(
       { ar: "لا يمكن حذف هذا الحساب", en: "This account can't be deleted" },
-      404,
+      403,
       httpStatusText.ERROR
     );
     return next(error);
   }
 
   await Admin.deleteOne({ _id: req.params.adminId });
-  res.status(201).json({
+
+  // استخرج صفحة وحدد حجم الصفحة من query params، لو مش موجودين افتراضياً:
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
+
+  const [admins, total] = await Promise.all([
+    Admin.find(
+      { role: { $ne: roles.SUPER_ADMIN } },
+      { password: 0, token: 0, __v: 0 }
+    )
+      .limit(limit)
+      .skip(skip),
+    Admin.countDocuments({ role: { $ne: roles.SUPER_ADMIN } }),
+  ]);
+
+  return res.status(200).json({
     status: httpStatusText.SUCCESS,
-    admin: targetAdmin,
+    admins,
+    total,
+    currentPage: page,
+    pageSize: limit,
+    totalPages: Math.ceil(total / limit),
     message: { ar: "تم حذف الحساب بنجاح", en: "Account deleted successfully" },
   });
 });
