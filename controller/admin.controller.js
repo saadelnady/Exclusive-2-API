@@ -15,7 +15,7 @@ const appError = require("../utils/appError");
 const httpStatusText = require("../utils/utils");
 const generateToken = require("../utils/generateToken");
 const roles = require("../utils/roles");
-const { default: mongoose } = require("mongoose");
+const mongoose = require("mongoose");
 
 const getAllAdmins = asyncWrapper(async (req, res, next) => {
   const limit = parseInt(req.query.limit) || 10;
@@ -58,14 +58,14 @@ const getAllAdmins = asyncWrapper(async (req, res, next) => {
     Admin.countDocuments(searchQuery),
   ]);
 
-  if (!Admins.length) {
-    const error = appError.create(
-      { ar: "لا يوجد مشرفين", en: "There are no admins" },
-      404,
-      httpStatusText.FAIL
-    );
-    return next(error);
-  }
+  // if (!Admins.length) {
+  //   const error = appError.create(
+  //     { ar: "لا يوجد مشرفين", en: "There are no admins" },
+  //     404,
+  //     httpStatusText.FAIL
+  //   );
+  //   return next(error);
+  // }
 
   return res.status(200).json({
     status: httpStatusText.SUCCESS,
@@ -190,10 +190,10 @@ const getAdminProfile = asyncWrapper(async (req, res, next) => {
     .status(200)
     .json({ status: httpStatusText.SUCCESS, data: { admin: targetAdmin } });
 });
+
 const getAdmin = asyncWrapper(async (req, res, next) => {
   const { adminId } = req.params;
 
-  // exclude password and token from the response
   const targetAdmin = await Admin.findOne({ _id: adminId }).select(
     "-password -token"
   );

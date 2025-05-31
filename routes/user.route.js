@@ -26,7 +26,9 @@ const multer = require("multer");
 const { storage, fileFilter } = require("../utils/multer");
 const upload = multer({ storage: storage, fileFilter });
 
-router.route("/").get(verifyToken, alloewdTo(roles.ADMIN), getAllUsers);
+router
+  .route("/")
+  .get(verifyToken, alloewdTo(roles.ADMIN, roles.SUPER_ADMIN), getAllUsers);
 router.route("/activation").post(verifyToken, activateUser);
 
 router

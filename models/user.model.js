@@ -27,11 +27,6 @@ const userSchema = new mongoose.Schema(
     },
     token: { type: String },
     cart: [{ type: mongoose.Types.ObjectId, ref: "Cart" }],
-    role: {
-      type: String,
-      enum: [roles.ADMIN, roles.USER],
-      default: roles.USER,
-    },
   },
   {
     timestamps: true,

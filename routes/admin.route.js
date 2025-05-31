@@ -40,18 +40,18 @@ router
   .route("/blockAdmin/:adminId")
   .put(verifyToken, alloewdTo(roles.SUPER_ADMIN), blockAdmin);
 
-router
-  .route("/:adminId")
-  .put(verifyToken, alloewdTo(roles.SUPER_ADMIN), getAdmin)
-  .put(editProfileValidation(), editAdminProfile)
-  .delete(verifyToken, alloewdTo(roles.SUPER_ADMIN), deleteAdmin);
-
 router.route("/getProfile").get(verifyToken, getAdminProfile);
-
-router.route("/register").post(registerValidation(), adminRegister);
-router.route("/login").post(loginValidation(), adminLogin);
 router
   .route("/statistics")
   .get(verifyToken, alloewdTo(roles.ADMIN, roles.SUPER_ADMIN), getStatistics);
+
+router
+  .route("/:adminId")
+  .get(verifyToken, getAdmin)
+  .put(editProfileValidation(), editAdminProfile)
+  .delete(verifyToken, alloewdTo(roles.SUPER_ADMIN), deleteAdmin);
+
+router.route("/register").post(registerValidation(), adminRegister);
+router.route("/login").post(loginValidation(), adminLogin);
 
 module.exports = router;

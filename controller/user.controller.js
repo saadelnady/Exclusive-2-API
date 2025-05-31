@@ -9,25 +9,54 @@ const sendEmail = require("../utils/sendEmail");
 const roles = require("../utils/roles");
 // const sendToken = require("../utils/sendToken");
 const fs = require("fs");
+const mongoose = require("mongoose");
 
 const getAllUsers = asyncWrapper(async (req, res, next) => {
-  const { limit, page } = req.query;
+  const limit = parseInt(req.query.limit) || 10;
+  const page = parseInt(req.query.page) || 1;
+  const text = req.query.text;
   const skip = (page - 1) * limit;
-  const users = await User.find({}, { __v: false, password: false })
-    .limit(limit)
-    .skip(skip);
-  if (!users) {
-    const error = appError.create(
-      "there is n't any user to show",
-      404,
-      httpStatusText.FAIL
-    );
-    next(error);
+
+  const searchQuery = {};
+
+  const escapeRegex = (text) => {
+    return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+  };
+
+  if (text) {
+    const safeText = escapeRegex(text);
+    const regex = { $regex: safeText, $options: "i" };
+
+    searchQuery.$or = [
+      { firstName: regex },
+      { lastName: regex },
+      { email: regex },
+      { mobilePhone: regex },
+      { address: regex },
+
+      {
+        _id: mongoose.Types.ObjectId.isValid(text)
+          ? new mongoose.Types.ObjectId(text)
+          : undefined,
+      },
+    ].filter(Boolean);
   }
 
-  return res
-    .status(200)
-    .json({ status: httpStatusText.SUCCESS, data: { users } });
+  const [users, totalUsersCount] = await Promise.all([
+    User.find(searchQuery, { __v: 0, password: 0 }).limit(limit).skip(skip),
+    User.countDocuments(searchQuery),
+  ]);
+
+  return res.status(200).json({
+    status: httpStatusText.SUCCESS,
+    data: {
+      users,
+      total: totalUsersCount,
+      currentPage: page,
+      pageSize: limit,
+      totalPages: Math.ceil(totalUsersCount / limit),
+    },
+  });
 });
 
 const editUser = asyncWrapper(async (req, res, next) => {
@@ -223,17 +252,34 @@ const deleteUser = asyncWrapper(async (req, res, next) => {
   const targetUser = await User.findOne({ _id: req.params.userId });
 
   if (!targetUser) {
-    const error = new appError.create(
-      "user not found",
+    const error = appError.create(
+      { ar: "هذا المستخدم غير موجود", en: "User not found" },
       404,
       httpStatusText.FAIL
     );
     return next(error);
   }
-  const deletedUser = await User.deleteOne({ _id: req.params.userId });
-  res.status(201).json({
+
+  await User.deleteOne({ _id: req.params.userId });
+
+  // استخرج صفحة وحدد حجم الصفحة من query params، لو مش موجودين افتراضياً:
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
+
+  const [users, total] = await Promise.all([
+    User.find({}, { password: 0, __v: 0 }).limit(limit).skip(skip),
+    User.countDocuments(),
+  ]);
+
+  return res.status(200).json({
     status: httpStatusText.SUCCESS,
-    data: { user: deletedUser },
+    users,
+    total,
+    currentPage: page,
+    pageSize: limit,
+    totalPages: Math.ceil(total / limit),
+    message: { ar: "تم حذف المستخدم بنجاح", en: "User deleted successfully" },
   });
 });
 
