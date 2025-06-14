@@ -14,9 +14,9 @@ const categoryRouter = require("./routes/category.route");
 const subCategoriesRouter = require("./routes/subCategory.route");
 const couponCodeRouter = require("./routes/couponCode.route");
 const cartRouter = require("./routes/cart.route");
+const uploadRouter = require("./routes/upload");
 const wishListRouter = require("./routes/wishListRouter.route.js");
 
-const uploadRouter = require("./utils/upload");
 const express = require("express");
 const cookieParser = require("cookie-parser");
 const bodyParser = require("body-parser");

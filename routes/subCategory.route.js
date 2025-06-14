@@ -5,13 +5,6 @@ const {
   editCategoryValidation,
 } = require("../middlewares/categoryValidation");
 
-const multer = require("multer");
-const { storage, fileFilter } = require("../utils/multer");
-
-const upload = multer({
-  storage: storage,
-  fileFilter,
-});
 const {
   getAllSubCategories,
   addSubCategory,
@@ -22,11 +15,11 @@ const {
 
 Router.route("/")
   .get(getAllSubCategories)
-  .post(upload.single("image"), addCategoryValidation(), addSubCategory);
+  .post(addCategoryValidation(), addSubCategory);
 
 Router.route("/:subCategoryId")
   .get(getSubCategory)
-  .put(upload.single("image"), editCategoryValidation(), editSubCategory)
+  .put(editCategoryValidation(), editSubCategory)
   .delete(deleteSubCategory);
 
 module.exports = Router;

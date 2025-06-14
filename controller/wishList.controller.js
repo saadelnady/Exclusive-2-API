@@ -2,7 +2,7 @@ const asyncWrapper = require("../middlewares/asyncWrapper");
 const WishList = require("../models/wishlist.model");
 const Product = require("../models/product.model");
 const appError = require("../utils/appError");
-const httpStatusText = require("../utils/utils");
+const { httpStatusText } = require("../utils/constants");
 
 const addToWishList = asyncWrapper(async (req, res, next) => {
   const { userId, productId, optionId } = req.body;

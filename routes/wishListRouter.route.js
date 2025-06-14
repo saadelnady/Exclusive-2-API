@@ -7,7 +7,7 @@ const {
 } = require("../controller/wishList.controller.js");
 
 const alloewdTo = require("../middlewares/alloewdTo");
-const roles = require("../utils/roles");
+const { roles } = require("../utils/constants");
 const verifyToken = require("../middlewares/verifyToken");
 
 const Router = express.Router();

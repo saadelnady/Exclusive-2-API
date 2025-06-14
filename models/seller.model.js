@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 const validator = require("validator");
-const roles = require("../utils/roles");
+const { roles } = require("../utils/constants");
 
 const sellerSchema = new mongoose.Schema(
   {

@@ -1,15 +1,13 @@
 const { validationResult } = require("express-validator");
 const bcrypt = require("bcrypt");
-const productStatus = require("../utils/productStatus");
 
 const asyncWrapper = require("../middlewares/asyncWrapper");
 const Seller = require("../models/seller.model");
 const appError = require("../utils/appError");
-const httpStatusText = require("../utils/utils");
-const generateToken = require("../utils/generateToken");
-const sendEmail = require("../utils/sendEmail");
-const roles = require("../utils/roles");
+const { generateToken } = require("../utils/utils");
+const { sendEmail } = require("../utils/utils");
 const fs = require("fs");
+const { productStatus, httpStatusText, roles } = require("../utils/constants");
 
 const sellerRegister = asyncWrapper(async (req, res, next) => {
   const errors = validationResult(req);
@@ -51,7 +49,7 @@ const sellerRegister = asyncWrapper(async (req, res, next) => {
   };
   const token = generateToken(seller);
 
-  const activationUrl = `${process.env.BAIS_URL}/sellerActivation/${token}`;
+  const activationUrl = `${process.env.BASE_URL}/sellerActivation/${token}`;
 
   await sendEmail({
     email: seller.email,
@@ -166,19 +164,11 @@ const getSellerProducts = asyncWrapper(async (req, res, next) => {
   });
 
   if (!targetSeller) {
-    const error = appError.create(
-      "Seller not found",
-      404,
-      httpStatusText.NOT_FOUND
-    );
+    const error = appError.create("Seller not found", 404, NOT_FOUND);
     return next(error);
   }
   if (!targetStatus) {
-    const error = appError.create(
-      "target status not found",
-      404,
-      httpStatusText.NOT_FOUND
-    );
+    const error = appError.create("target status not found", 404, NOT_FOUND);
     return next(error);
   }
 

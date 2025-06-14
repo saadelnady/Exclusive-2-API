@@ -4,7 +4,7 @@ const {
   getSellerCoupons,
 } = require("../controller/couponCode.controller");
 const alloewdTo = require("../middlewares/alloewdTo");
-const roles = require("../utils/roles");
+const { roles } = require("../utils/constants");
 const verifyToken = require("../middlewares/verifyToken");
 const Router = express.Router();
 

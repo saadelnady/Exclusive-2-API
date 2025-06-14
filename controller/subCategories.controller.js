@@ -1,9 +1,8 @@
 const { validationResult } = require("express-validator");
 const asyncWrapper = require("../middlewares/asyncWrapper");
-const subCategory = require("../models/subCategory.model");
+const subCategory = require("../models/subCategory.model.js");
 const appError = require("../utils/appError");
-const httpStatusText = require("../utils/utils");
-const Subcategory = require("../models/subCategory.model");
+const { httpStatusText } = require("../utils/constants");
 const Category = require("../models/category.model");
 
 const getAllSubCategories = asyncWrapper(async (req, res, next) => {

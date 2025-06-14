@@ -13,20 +13,16 @@ const {
   getAllSellers,
   deleteSeller,
   getSellerProfile,
-} = require("../controller/seller.controller");
+} = require("../controller/seller.controller.js");
 
 const verifyToken = require("../middlewares/verifyToken");
-const roles = require("../utils/roles");
+const { roles } = require("../utils/constants");
 const alloewdTo = require("../middlewares/alloewdTo");
 const {
   editProfileValidation,
 } = require("../middlewares/editProfileValidation");
 
 const router = express.Router();
-
-const multer = require("multer");
-const { storage, fileFilter } = require("../utils/multer");
-const upload = multer({ storage: storage, fileFilter });
 
 router
   .route("/")
@@ -46,10 +42,5 @@ router
 
 router
   .route("/:sellerId")
-  .put(
-    verifyToken,
-    upload.single("image"),
-    editProfileValidation(),
-    editSeller
-  );
+  .put(verifyToken, editProfileValidation(), editSeller);
 module.exports = router;

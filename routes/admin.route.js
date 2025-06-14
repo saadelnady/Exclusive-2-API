@@ -17,7 +17,7 @@ const {
   loginValidation,
 } = require("../middlewares/authValidation");
 const verifyToken = require("../middlewares/verifyToken");
-const roles = require("../utils/roles");
+const { roles } = require("../utils/constants");
 const alloewdTo = require("../middlewares/alloewdTo");
 const {
   editProfileValidation,

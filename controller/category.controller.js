@@ -2,7 +2,7 @@ const { validationResult } = require("express-validator");
 const asyncWrapper = require("../middlewares/asyncWrapper");
 const Category = require("../models/category.model");
 const appError = require("../utils/appError");
-const httpStatusText = require("../utils/utils");
+const { httpStatusText } = require("../utils/constants");
 
 const getAllCategories = asyncWrapper(async (req, res, next) => {
   const { limit, page, text } = req.query;

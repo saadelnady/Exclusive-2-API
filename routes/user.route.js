@@ -6,15 +6,17 @@ const {
   userLogin,
   editUser,
   deleteUser,
-  activateUser,
-} = require("../controller/user.controller");
+  verifyUser,
+  getUser,
+  resendVerificationCode,
+} = require("../controller/user.controller.js");
 
 const {
   registerValidation,
   loginValidation,
 } = require("../middlewares/authValidation");
 const verifyToken = require("../middlewares/verifyToken");
-const roles = require("../utils/roles");
+const { roles } = require("../utils/constants");
 const alloewdTo = require("../middlewares/alloewdTo");
 const {
   editProfileValidation,
@@ -22,18 +24,24 @@ const {
 
 const router = express.Router();
 
-const multer = require("multer");
-const { storage, fileFilter } = require("../utils/multer");
-const upload = multer({ storage: storage, fileFilter });
-
 router
   .route("/")
   .get(verifyToken, alloewdTo(roles.ADMIN, roles.SUPER_ADMIN), getAllUsers);
-router.route("/activation").post(verifyToken, activateUser);
+router.route("/verify").post(verifyUser);
+router.route("/resendVerification").post(resendVerificationCode);
 
 router
   .route("/:userId")
-  .put(upload.single("image"), editProfileValidation(), editUser)
+  .get(
+    verifyToken,
+    alloewdTo(roles.ADMIN, roles.SUPER_ADMIN, roles.USER, roles.SELLER),
+    getUser
+  )
+  .put(
+    verifyToken,
+    alloewdTo(roles.ADMIN, roles.SUPER_ADMIN, roles.USER),
+    editUser
+  )
   .delete(deleteUser);
 
 router.route("/getUserProfile").get(verifyToken, getUserProfile);

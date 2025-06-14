@@ -12,10 +12,9 @@ const moment = require("moment");
 require("moment/locale/ar");
 
 const appError = require("../utils/appError");
-const httpStatusText = require("../utils/utils");
-const generateToken = require("../utils/generateToken");
-const roles = require("../utils/roles");
+const { generateToken } = require("../utils/utils");
 const mongoose = require("mongoose");
+const { httpStatusText, roles } = require("../utils/constants");
 
 const getAllAdmins = asyncWrapper(async (req, res, next) => {
   const limit = parseInt(req.query.limit) || 10;

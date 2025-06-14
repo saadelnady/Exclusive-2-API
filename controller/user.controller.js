@@ -3,14 +3,14 @@ const bcrypt = require("bcrypt");
 const User = require("../models/user.model");
 const asyncWrapper = require("../middlewares/asyncWrapper");
 const appError = require("../utils/appError");
-const httpStatusText = require("../utils/utils");
-const generateToken = require("../utils/generateToken");
-const sendEmail = require("../utils/sendEmail");
-const roles = require("../utils/roles");
+const { httpStatusText, userStatus } = require("../utils/constants");
+const { generateToken, generateVerificationCode } = require("../utils/utils");
+const { sendEmail } = require("../utils/utils");
+
 // const sendToken = require("../utils/sendToken");
 const fs = require("fs");
 const mongoose = require("mongoose");
-
+const { getImageFullPath } = require("../utils/utils");
 const getAllUsers = asyncWrapper(async (req, res, next) => {
   const limit = parseInt(req.query.limit) || 10;
   const page = parseInt(req.query.page) || 1;
@@ -68,7 +68,11 @@ const editUser = asyncWrapper(async (req, res, next) => {
 
   const targetUser = await User.findById(userId);
   if (!targetUser) {
-    const error = appError.create("user not found", 400, httpStatusText.FAIL);
+    const error = appError.create(
+      { ar: "هذا المستخدم غير موجود", en: "User not found" },
+      400,
+      httpStatusText.FAIL
+    );
     return next(error);
   }
 
@@ -135,8 +139,35 @@ const editUser = asyncWrapper(async (req, res, next) => {
   return res.status(200).json({
     status: httpStatusText.SUCCESS,
     data: { user: updatedUser },
-    message: "Profile updated successfully",
+    message: {
+      ar: "تم تعديل الحساب بنجاح",
+      en: "Account updated successfully",
+    },
   });
+});
+
+const getUser = asyncWrapper(async (req, res, next) => {
+  const { userId } = req.params;
+  const targetUser = await User.findById(userId, {
+    password: 0,
+    __v: 0,
+    token: 0,
+  });
+  if (!targetUser) {
+    const error = appError.create(
+      {
+        ar: "المستخدم غير موجود",
+        en: "User not found",
+      },
+      404,
+      httpStatusText.FAIL
+    );
+    return next(error);
+  }
+  targetUser.image = getImageFullPath(targetUser?.image);
+  return res
+    .status(200)
+    .json({ status: httpStatusText.SUCCESS, data: { user: targetUser } });
 });
 
 const getUserProfile = asyncWrapper(async (req, res, next) => {
@@ -160,50 +191,174 @@ const userRegister = asyncWrapper(async (req, res, next) => {
 
   const { firstName, lastName, email, password, mobilePhone } = req.body;
 
-  const oldUser = await User.findOne({ email: email });
+  const existingEmail = await User.findOne({ email });
+  const existingPhone = await User.findOne({ mobilePhone });
 
-  const mobilePhoneExist = await User.findOne({ mobilePhone: mobilePhone });
-
-  if (mobilePhoneExist) {
+  if (existingEmail) {
     const error = appError.create(
-      "mobilePhone already exists",
+      { ar: "المستخدم موجود بالفعل", en: "User already exists" },
       400,
       httpStatusText.FAIL
     );
     return next(error);
   }
-  if (oldUser) {
+  if (existingPhone) {
     const error = appError.create(
-      "user already exists",
+      { ar: "رقم الجوال موجود بالفعل", en: "Mobile Phone is Already Exist" },
       400,
       httpStatusText.FAIL
     );
     return next(error);
   }
 
-  //genereate token
-  const user = {
+  const verificationCode = generateVerificationCode();
+  const verificationCodeExpires = Date.now() + 10 * 60 * 1000; // 10 دقائق
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  await sendEmail({
+    email,
+    subject: "Your Verification Code",
+    message: `Your verification code is: ${verificationCode} Please use this code to activate your account.`,
+  });
+
+  await User.create({
     firstName,
     lastName,
     email,
+    password: hashedPassword,
     mobilePhone,
-    password,
-    role: roles.USER,
-  };
-  const token = generateToken(user);
-
-  const activationUrl = `${process.env.BAIS_URL}/userActivation/${token}`;
-
-  await sendEmail({
-    email: user.email,
-    subject: "Activate your account",
-    message: `Hello ${user.firstName}, please click on the link to activate your account: ${activationUrl}`,
+    verificationCode,
+    verificationCodeExpires,
+    status: userStatus.NOTVERIFIED,
   });
 
   return res.status(201).json({
     status: httpStatusText.SUCCESS,
-    data: { token },
-    message: `please cheack your email:-${user.email} to activate your account`,
+    message: `تم تسجيل الحساب بنجاح. برجاء التحقق من بريدك الإلكتروني ${email} لتفعيل الحساب.`,
+  });
+});
+
+const verifyUser = asyncWrapper(async (req, res, next) => {
+  const { email, verificationCode } = req.body;
+
+  if (!email || !verificationCode) {
+    return next(
+      appError.create(
+        {
+          ar: "يجب إدخال البريد الإلكتروني وكود التحقق",
+          en: "Email and verification code are required",
+        },
+        400,
+        httpStatusText.FAIL
+      )
+    );
+  }
+
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    return next(
+      appError.create(
+        { ar: "المستخدم غير موجود", en: "User not found" },
+        404,
+        httpStatusText.FAIL
+      )
+    );
+  }
+
+  if (user.status === userStatus.VERIFIED) {
+    return res.status(200).json({
+      status: httpStatusText.SUCCESS,
+      message: "الحساب مفعل بالفعل",
+    });
+  }
+
+  if (
+    user.verificationCode !== verificationCode ||
+    user.verificationCodeExpires < Date.now()
+  ) {
+    return next(
+      appError.create(
+        {
+          ar: "كود التحقق غير صالح أو منتهي الصلاحية",
+          en: "Invalid or expired verification code",
+        },
+        400,
+        httpStatusText.FAIL
+      )
+    );
+  }
+
+  // تحديث حالة المستخدم
+  user.status = userStatus.VERIFIED;
+  user.verificationCode = "";
+  user.verificationCodeExpires = "";
+  await user.save();
+
+  return res.status(200).json({
+    status: httpStatusText.SUCCESS,
+    message: {
+      ar: "تم التحقق من الحساب بنجاح",
+      en: "Account verified successfully",
+    },
+  });
+});
+
+const resendVerificationCode = asyncWrapper(async (req, res, next) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return next(
+      appError.create(
+        { ar: "يرجى إدخال البريد الإلكتروني", en: "Email is required" },
+        400,
+        httpStatusText.FAIL
+      )
+    );
+  }
+
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    return next(
+      appError.create(
+        { ar: "المستخدم غير موجود", en: "User not found" },
+        404,
+        httpStatusText.FAIL
+      )
+    );
+  }
+
+  if (user.status === userStatus.VERIFIED) {
+    return res.status(200).json({
+      status: httpStatusText.SUCCESS,
+      message: {
+        ar: "الحساب مفعل بالفعل",
+        en: "Account is already verified",
+      },
+    });
+  }
+
+  const verificationCode = generateVerificationCode();
+  const verificationCodeExpires = Date.now() + 10 * 60 * 1000;
+
+  await sendEmail({
+    email: user.email,
+    subject: "Your Verification Code",
+    message: `Your verification code is: ${verificationCode} Please use this code to activate your account.`,
+  });
+
+  user.verificationCode = verificationCode;
+  user.verificationCodeExpires = verificationCodeExpires;
+  await user.save();
+
+  return res.status(200).json({
+    status: httpStatusText.SUCCESS,
+    message: {
+      ar: "تم ارسال كود التحقق  مرة أخرى",
+      en: "Verification code sent again successfully",
+    },
   });
 });
 
@@ -283,33 +438,6 @@ const deleteUser = asyncWrapper(async (req, res, next) => {
   });
 });
 
-const activateUser = asyncWrapper(async (req, res, next) => {
-  const { current } = req;
-  const hashedPassword = await bcrypt.hash(current.password, 10);
-
-  current.password = hashedPassword;
-  const oldUser = await User.findOne({ email: current.email });
-
-  const mobilePhoneExist = await User.findOne({
-    mobilePhone: current.mobilePhone,
-  });
-
-  if (mobilePhoneExist || oldUser) {
-    const error = appError.create(
-      "your account already activated ",
-      400,
-      httpStatusText.FAIL
-    );
-    return next(error);
-  }
-
-  const user = await User.create(current);
-
-  // sendToken(current, 201, res);
-
-  res.status(200).json({ data: { currentUser: user } });
-});
-
 module.exports = {
   getAllUsers,
   getUserProfile,
@@ -317,5 +445,7 @@ module.exports = {
   userLogin,
   editUser,
   deleteUser,
-  activateUser,
+  verifyUser,
+  resendVerificationCode,
+  getUser,
 };

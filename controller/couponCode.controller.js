@@ -3,8 +3,7 @@ const { validationResult } = require("express-validator");
 const asyncWrapper = require("../middlewares/asyncWrapper");
 const CouponCode = require("../models/couponCode.model");
 const appError = require("../utils/appError");
-const httpStatusText = require("../utils/utils");
-const roles = require("../utils/roles");
+const { httpStatusText } = require("../utils/constants");
 
 // add seller coupon
 const addCouponCode = asyncWrapper(async (req, res, next) => {
@@ -45,7 +44,7 @@ const getSellerCoupons = asyncWrapper(async (req, res, next) => {
   const sellerCoupons = await CouponCode.find({
     couponCodeOwner: sellerId,
   }).populate("selectedProduct");
-  
+
   if (!sellerCoupons) {
     const error = appError.create(
       "There is no coupons to show",

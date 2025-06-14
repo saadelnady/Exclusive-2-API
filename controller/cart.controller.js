@@ -2,9 +2,8 @@ const asyncWrapper = require("../middlewares/asyncWrapper");
 const Cart = require("../models/cart.model");
 const Product = require("../models/product.model");
 const appError = require("../utils/appError");
-const httpStatusText = require("../utils/utils");
-const { calculateCartTotal } = require("../helpers/calculateCartTotal");
-
+const { calculateCartTotal } = require("../utils/utils");
+const { httpStatusText } = require("../utils/constants");
 const addToCart = asyncWrapper(async (req, res, next) => {
   const { user, productId, optionId, newSelectedCount } = req.body;
 

@@ -1,5 +1,5 @@
 const appError = require("../utils/appError");
-const httpStatusText = require("../utils/utils");
+const { httpStatusText } = require("../utils/constants");
 
 module.exports = (...roles) => {
   return (req, res, next) => {
